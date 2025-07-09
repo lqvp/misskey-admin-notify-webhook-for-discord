@@ -1,34 +1,33 @@
-export default async function mention(body: any, webhookUrl: string) {
-	const server = body.server;
-	const name = body.body.note.user.name;
-	const text = body.body.note.text;
+import { DISCORD_COLORS, MESSAGES } from '@/constants';
+import type { MentionPayload } from '@/types';
+import { sendDiscordNotification } from '@/utils/discord';
 
-	const isOk = await fetch(webhookUrl, {
-		body: JSON.stringify({
-			embeds: [
-				{
-					title: '管理人にメンションがありました。',
-					color: 9364310,
-					fields: [
-						{
-							name: 'メンションがあったサーバー',
-							value: `${server}`,
-						},
-						{
-							name: 'メンションしたユーザー名',
-							value: `${name}`,
-						},
-						{
-							name: '内容',
-							value: `${text}`,
-						},
-					],
-				},
-			],
-		}),
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-	}).then((res) => res.ok);
+export default async function mention(
+  payload: MentionPayload,
+  webhookUrl: string
+): Promise<boolean> {
+  const { server, body } = payload;
+  const { name } = body.note.user;
+  const { text } = body.note;
 
-	return isOk;
+  const embed = {
+    title: MESSAGES.MENTION_TITLE,
+    color: DISCORD_COLORS.MENTION,
+    fields: [
+      {
+        name: MESSAGES.FIELDS.MENTION_SERVER,
+        value: server,
+      },
+      {
+        name: MESSAGES.FIELDS.MENTION_USER,
+        value: name,
+      },
+      {
+        name: MESSAGES.FIELDS.CONTENT,
+        value: text,
+      },
+    ],
+  };
+
+  return sendDiscordNotification(webhookUrl, embed);
 }

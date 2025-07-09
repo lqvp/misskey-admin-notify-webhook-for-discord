@@ -1,17 +1,18 @@
-export default async function inactiveModeratorsWarning(body: any, webhookUrl: string) {
-	const isOk = await fetch(webhookUrl, {
-		body: JSON.stringify({
-			embeds: [
-				{
-					title: 'まもなく新規登録が招待制へ移行します',
-					color: 14931798,
-					description: `### 注意\nモデレーターのアクティブが一定期間なかったため、まもなく新規登録が招待制へ移行します。\nモデレーターがログインすることで、この自動処理は中止されます。\n### 対象サーバー\n${body.server}`,
-				},
-			],
-		}),
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-	}).then((res) => res.ok);
+import { DISCORD_COLORS, MESSAGES } from '@/constants';
+import type { InactiveModeratorsWarningPayload } from '@/types';
+import { sendDiscordNotification } from '@/utils/discord';
 
-	return isOk;
+export default async function inactiveModeratorsWarning(
+  payload: InactiveModeratorsWarningPayload,
+  webhookUrl: string
+): Promise<boolean> {
+  const { server } = payload;
+
+  const embed = {
+    title: MESSAGES.MODERATOR_WARNING_TITLE,
+    color: DISCORD_COLORS.MODERATOR_WARNING,
+    description: MESSAGES.MODERATOR_WARNING_DESCRIPTION(server),
+  };
+
+  return sendDiscordNotification(webhookUrl, embed);
 }

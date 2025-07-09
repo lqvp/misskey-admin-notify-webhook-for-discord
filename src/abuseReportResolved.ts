@@ -1,40 +1,41 @@
-import { getUserName } from './utils/getUserName';
+import { DISCORD_COLORS, MESSAGES } from '@/constants';
+import type { AbuseReportResolvedPayload } from '@/types';
+import { sendDiscordNotification } from '@/utils/discord';
+import { getUserNames } from '@/utils/getUserName';
 
-export default async function abuseReportResolved(body: any, webhookUrl: string) {
-	const targetUserName = await getUserName(body.server, body.body.targetUserId);
-	const reporterUserName = await getUserName(body.server, body.body.reporterId);
-	const asigneeUserName = await getUserName(body.server, body.body.assigneeId);
+export default async function abuseReportResolved(
+  payload: AbuseReportResolvedPayload,
+  webhookUrl: string
+): Promise<boolean> {
+  const { server, body } = payload;
+  const { targetUserId, reporterId, assigneeId, comment } = body;
 
-	const isOk = await fetch(webhookUrl, {
-		body: JSON.stringify({
-			embeds: [
-				{
-					title: '通報を解決しました',
-					color: 3359727,
-					description: `通報が解決されました。\n### 通報内容\n ${body.body.comment}\n### 通報があったサーバー\n${body.server}`,
-					fields: [
-						{
-							name: '通報されたユーザー',
-							value: `[${targetUserName}](${body.server}/users/${body.body.targetUserId})`,
-							inline: true,
-						},
-						{
-							name: '通報を行ったユーザー',
-							value: `[${reporterUserName}](${body.server}/users/${body.body.reporterId})`,
-							inline: true,
-						},
-						{
-							name: '通報を解決したユーザー',
-							value: `[${asigneeUserName}](${body.server}/users/${body.body.assigneeId})`,
-							inline: true,
-						},
-					],
-				},
-			],
-		}),
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-	}).then((res) => res.ok);
+  // 並列でユーザー名を取得
+  const [targetUserName, reporterUserName, assigneeUserName] =
+    await getUserNames(server, [targetUserId, reporterId, assigneeId]);
 
-	return isOk;
+  const embed = {
+    title: MESSAGES.ABUSE_REPORT_RESOLVED_TITLE,
+    color: DISCORD_COLORS.ABUSE_REPORT_RESOLVED,
+    description: MESSAGES.ABUSE_REPORT_RESOLVED_DESCRIPTION(comment, server),
+    fields: [
+      {
+        name: MESSAGES.FIELDS.REPORTED_USER,
+        value: `[${targetUserName}](${server}/users/${targetUserId})`,
+        inline: true,
+      },
+      {
+        name: MESSAGES.FIELDS.REPORTER_USER,
+        value: `[${reporterUserName}](${server}/users/${reporterId})`,
+        inline: true,
+      },
+      {
+        name: MESSAGES.FIELDS.RESOLVER_USER,
+        value: `[${assigneeUserName}](${server}/users/${assigneeId})`,
+        inline: true,
+      },
+    ],
+  };
+
+  return sendDiscordNotification(webhookUrl, embed);
 }

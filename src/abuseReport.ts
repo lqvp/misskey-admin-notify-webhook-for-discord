@@ -1,39 +1,38 @@
-import { getUserName } from './utils/getUserName';
+import { DISCORD_COLORS, MESSAGES } from '@/constants';
+import type { AbuseReportPayload } from '@/types';
+import { sendDiscordNotification } from '@/utils/discord';
+import { getUserNames } from '@/utils/getUserName';
 
-export default async function abuseReport(body: any, webhookUrl: string) {
-	const server = body.server;
-	const targetUserId = body.body.targetUserId;
-	const text = body.body.comment;
-	const reporterUserId = body.body.reporterId;
+export default async function abuseReport(
+  payload: AbuseReportPayload,
+  webhookUrl: string
+): Promise<boolean> {
+  const { server, body } = payload;
+  const { targetUserId, reporterId, comment } = body;
 
-	const targetUserName = await getUserName(server, targetUserId);
-	const reporterUserName = await getUserName(server, reporterUserId);
+  // 並列でユーザー名を取得
+  const [targetUserName, reporterUserName] = await getUserNames(server, [
+    targetUserId,
+    reporterId,
+  ]);
 
-	const isOk = await fetch(webhookUrl, {
-		body: JSON.stringify({
-			embeds: [
-				{
-					title: '通報がありました',
-					color: 15409955,
-					description: `通報がありました。\n### 通報内容\n ${text}\n### 通報があったサーバー\n${server}`,
-					fields: [
-						{
-							name: '通報されたユーザー',
-							value: `[${targetUserName}](${server}/users/${targetUserId})`,
-							inline: true,
-						},
-						{
-							name: '通報を行ったユーザー',
-							value: `[${reporterUserName}](${server}/users/${reporterUserId})`,
-							inline: true,
-						},
-					],
-				},
-			],
-		}),
-		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-	}).then((res) => res.ok);
+  const embed = {
+    title: MESSAGES.ABUSE_REPORT_TITLE,
+    color: DISCORD_COLORS.ABUSE_REPORT,
+    description: MESSAGES.ABUSE_REPORT_DESCRIPTION(comment, server),
+    fields: [
+      {
+        name: MESSAGES.FIELDS.REPORTED_USER,
+        value: `[${targetUserName}](${server}/users/${targetUserId})`,
+        inline: true,
+      },
+      {
+        name: MESSAGES.FIELDS.REPORTER_USER,
+        value: `[${reporterUserName}](${server}/users/${reporterId})`,
+        inline: true,
+      },
+    ],
+  };
 
-	return isOk;
+  return sendDiscordNotification(webhookUrl, embed);
 }
