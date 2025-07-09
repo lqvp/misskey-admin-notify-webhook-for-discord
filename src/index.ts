@@ -14,6 +14,7 @@ import abuseReport from './abuseReport';
 import abuseReportResolved from './abuseReportResolved';
 import inactiveModeratorsInvitationOnlyChanged from './inactiveModeratorsInvitationOnlyChanged';
 import inactiveModeratorsWarning from './inactiveModeratorsWarning';
+import receivedContactForm from './receivedContactForm';
 import mention from './mention';
 import userCreated from './userCreated';
 
@@ -59,6 +60,11 @@ export default {
 
 		if (body.type === 'inactiveModeratorsInvitationOnlyChanged') {
 			const isOk = await inactiveModeratorsInvitationOnlyChanged(body, env.DISCORD);
+			return new Response(isOk ? 'ok' : 'error');
+		}
+
+		if (body.type === 'receivedContactForm') {
+			const isOk = await receivedContactForm(body, env.DISCORD);
 			return new Response(isOk ? 'ok' : 'error');
 		}
 
